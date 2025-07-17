@@ -30,7 +30,6 @@ class ConnectionManager:
         Рассылаем сообщение (json-словарь) всем активным WebSocket-клиентам.
         """
         text_data = json.dumps(message)
-        # Преобразуем каждое соединение в строку JSON
         for connection in list(self.active_connections):
             try:
                 await connection.send_text(text_data)

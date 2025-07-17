@@ -38,6 +38,7 @@ class AppealRead(AppealBase):
     id: uuid.UUID
     created_at: datetime.datetime
     updated_at: datetime.datetime
+    ticket_number: int
     is_deleted: bool
     type_name: str
     severity_name: str

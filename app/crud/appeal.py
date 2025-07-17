@@ -51,26 +51,10 @@ async def create_appeal(db: AsyncSession, appeal_in: AppealCreate, current_user_
     # Формируем сообщение для рассылки
     message = {
         "event_type": "create",
-        "appeal": {
-            "id": str(new_obj.id),
-            "type_id": new_obj.type_id,
-            "type_name": new_obj.type_name,
-            "severity_id": new_obj.severity_id,
-            "severity_name": new_obj.severity_name,
-            "status_id": new_obj.status_id,
-            "status_name": new_obj.status_name,
-            "location": new_obj.location,
-            "description": new_obj.description,
-            "source": new_obj.source,
-            "reporter_id": str(new_obj.reporter_id) if new_obj.reporter_id else None,
-            "assigned_to_id": str(new_obj.assigned_to_id) if new_obj.assigned_to_id else None,
-            "payload": new_obj.payload,
-            "is_deleted": new_obj.is_deleted,
-            "created_at": new_obj.created_at.isoformat(),
-            "updated_at": new_obj.updated_at.isoformat(),
-        },
-    }
+        "id": str(new_obj.id),
 
+    }
+    print(message, "aaaaaaaaaa")
     # Рассылаем всем подписанным WebSocket-клиентам
     await manager.broadcast(message)
 

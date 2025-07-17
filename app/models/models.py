@@ -11,7 +11,8 @@ from sqlalchemy import (
     Boolean,
     TIMESTAMP,
     ForeignKey,
-    JSON
+    JSON,
+    text
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -87,6 +88,11 @@ class Appeal(Base):
     type = relationship("AppealType", lazy="joined")
     severity = relationship("SeverityLevel", lazy="joined")
     status = relationship("AppealStatus", lazy="joined")
+    ticket_number = Column(
+        Integer,
+        nullable=False,
+        server_default=text("nextval('appeals_ticket_number_seq'::regclass)")
+    )
 
     @property
     def type_name(self) -> str:
