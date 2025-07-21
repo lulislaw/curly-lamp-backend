@@ -14,7 +14,7 @@ from sqlalchemy import (
     JSON,
     text
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -147,3 +147,38 @@ class Attachment(Base):
 
     appeal = relationship("Appeal", back_populates="attachments")
     uploaded_by = relationship("User")
+
+class CameraHardware(Base):
+    __tablename__ = "camera_hardware"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    stream_url = Column(String, nullable=False)
+    ptz_enabled = Column(Boolean, default=False)
+    ptz_protocol = Column(String, nullable=True)
+    username = Column(String, nullable=True)
+    password = Column(String, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
+
+class Image(Base):
+    __tablename__ = "images"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String, nullable=False)
+    filepath = Column(String, nullable=False)
+    uploaded_at = Column(TIMESTAMP(timezone=True),  default=datetime.datetime.utcnow)
+
+class BuildingConfig(Base):
+    __tablename__ = 'building_config'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_build = Column(Integer, nullable=False)
+    name_build = Column(Text, nullable=False)
+    config = Column(JSONB, nullable=False, default={})
+    Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow
+    )
