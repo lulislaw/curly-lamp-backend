@@ -1,10 +1,7 @@
-# backend/app/schemas/appeal.py
-
 from __future__ import annotations
 import datetime
 import uuid
 from typing import Optional, List
-
 from pydantic import BaseModel, Field
 
 
@@ -21,7 +18,6 @@ class AppealBase(BaseModel):
 
 
 class AppealCreate(AppealBase):
-    # при создании не указываем id/created_at/updated_at/is_deleted:
     pass
 
 

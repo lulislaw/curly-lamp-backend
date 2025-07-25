@@ -1,9 +1,8 @@
-# app/schemas/camera_hardware.py
-
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+
 
 class CameraHardwareBase(BaseModel):
     name: str
@@ -13,8 +12,10 @@ class CameraHardwareBase(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
 
+
 class CameraHardwareCreate(CameraHardwareBase):
     pass
+
 
 class CameraHardwareRead(CameraHardwareBase):
     id: UUID

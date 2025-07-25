@@ -1,5 +1,5 @@
-# backend/app/schemas/reference.py
 from pydantic import BaseModel
+
 
 class AppealTypeRead(BaseModel):
     id: int
@@ -9,6 +9,7 @@ class AppealTypeRead(BaseModel):
     class Config:
         from_attributes = True
 
+
 class SeverityLevelRead(BaseModel):
     id: int
     code: str
@@ -17,6 +18,7 @@ class SeverityLevelRead(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class AppealStatusRead(BaseModel):
     id: int

@@ -1,22 +1,12 @@
-# backend/app/services/excel_export.py
-
 import io
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.models import AppealHistory, Appeal  # импортируем ORM-модели
-
+from app.models.models import AppealHistory, Appeal
 from app.models.models import Appeal, AppealType, AppealStatus, SeverityLevel
+
+
 async def get_all_history_as_excel(db: AsyncSession) -> io.BytesIO:
-    """
-    Читаем всю таблицу appeal_history, формируем DataFrame и записываем в Excel.
-    Возвращаем BytesIO-буфер с содержимым XLSX.
-    """
-
-    # 1) Собираем запрос: все записи appeal_history плюс, опционально, связанные Appeal (название типа, статус и т.д.)
-    #    Здесь я просто вытаскиваю поля из appeal_history; при необходимости можно JOIN и на appeal (например, чтобы добавить
-    #    в колонку title обращения, либо type_name/ status_name). Достаточно показать основную суть.
-
     stmt = (
         select(
             AppealHistory.id.label("history_id"),
@@ -40,7 +30,6 @@ async def get_all_history_as_excel(db: AsyncSession) -> io.BytesIO:
     result = await db.execute(stmt)
     rows = result.fetchall()
 
-    # 2) Если нет ни одной записи, возвращаем пустой DataFrame
     if not rows:
         df_empty = pd.DataFrame(
             columns=[
@@ -57,16 +46,13 @@ async def get_all_history_as_excel(db: AsyncSession) -> io.BytesIO:
             ]
         )
         buffer = io.BytesIO()
-        # Записываем пустой DataFrame (будет XLSX с одним листом и заголовками)
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             df_empty.to_excel(writer, index=False, sheet_name="AppealHistory")
         buffer.seek(0)
         return buffer
 
-    # 3) Превращаем список Row (RowTuple) в список словарей
     data = []
     for row in rows:
-        # row — SQLAlchemy Row; можно обращаться как row.history_id, row.appeal_id и т.д.
         data.append({
             "history_id": str(row.history_id),
             "appeal_id": str(row.appeal_id),
@@ -77,30 +63,19 @@ async def get_all_history_as_excel(db: AsyncSession) -> io.BytesIO:
             "old_value": row.old_value,
             "new_value": row.new_value,
             "comment": row.comment,
-            "metadata": row.payload,  # это JSONB, pandas сохранит его как Python dict
+            "metadata": row.payload,
         })
 
-    # 4) Формируем DataFrame
     df = pd.DataFrame(data)
 
-    # 5) Пишем DataFrame в буфер XLSX
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        # По желанию можно переименовать колонки или переформатировать дату
         df.to_excel(writer, index=False, sheet_name="AppealHistory")
     buffer.seek(0)
     return buffer
 
 
-
 async def get_all_appeals_as_excel(db: AsyncSession) -> io.BytesIO:
-    """
-    Читает все записи из таблицы appeals, конвертирует в DataFrame и записывает в Excel.
-    Возвращает BytesIO-буфер с содержимым XLSX.
-    """
-
-    # 1) Формируем запрос: берём все поля из appeals,
-    #    а также названия типа, уровня и статуса (через JOINы).
     stmt = (
         select(
             Appeal.id.label("appeal_id"),
@@ -127,9 +102,7 @@ async def get_all_appeals_as_excel(db: AsyncSession) -> io.BytesIO:
     )
 
     result = await db.execute(stmt)
-    rows = result.fetchall()  # список sqlalchemy.engine.row.Row
-
-    # 2) Если нет ни одной записи, возвращаем пустой DataFrame с нужными колонками
+    rows = result.fetchall()
     if not rows:
         df_empty = pd.DataFrame(
             columns=[
@@ -157,19 +130,13 @@ async def get_all_appeals_as_excel(db: AsyncSession) -> io.BytesIO:
         buffer.seek(0)
         return buffer
 
-    # 3) Преобразуем строки в список словарей, приводя все поля к «примитивам»
     data = []
     for row in rows:
-        # 3.1) ID и UUID-поля в строки
         appeal_id_str = str(row.appeal_id) if row.appeal_id else ""
         reporter_id_str = str(row.reporter_id) if row.reporter_id else ""
         assigned_to_id_str = str(row.assigned_to_id) if row.assigned_to_id else ""
-
-        # 3.2) Дата/время в ISO-формат
         created_at_str = row.created_at.isoformat() if row.created_at else ""
         updated_at_str = row.updated_at.isoformat() if row.updated_at else ""
-
-        # 3.3) Остальные текстовые и числовые поля
         type_id_val = row.type_id if row.type_id is not None else ""
         type_name_str = row.type_name if row.type_name else ""
         severity_id_val = row.severity_id if row.severity_id is not None else ""
@@ -180,8 +147,6 @@ async def get_all_appeals_as_excel(db: AsyncSession) -> io.BytesIO:
         description_str = row.description if row.description else ""
         source_str = row.source if row.source else ""
         is_deleted_bool = bool(row.is_deleted)
-
-        # 3.4) payload (JSONB) → приводим к JSON-строке
         try:
             if row.payload is None:
                 payload_str = ""
@@ -210,11 +175,8 @@ async def get_all_appeals_as_excel(db: AsyncSession) -> io.BytesIO:
             "payload": payload_str,
             "is_deleted": is_deleted_bool,
         })
-
-    # 4) Создаём DataFrame
     df = pd.DataFrame(data)
 
-    # 5) Записываем DataFrame в Excel (BytesIO)
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Appeals")

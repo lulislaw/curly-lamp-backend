@@ -1,5 +1,3 @@
-# backend/app/crud/appeal.py
-
 from typing import List, Optional
 import uuid
 
@@ -10,6 +8,8 @@ from app.models.models import Appeal, AppealHistory
 from app.schemas.appeal import AppealCreate, AppealUpdate
 from sqlalchemy.orm import joinedload
 from app.ws_manager import manager
+
+
 async def get_appeal(db: AsyncSession, appeal_id: uuid.UUID) -> Optional[Appeal]:
     stmt = (
         select(Appeal)
@@ -31,7 +31,6 @@ async def get_appeals(db: AsyncSession, skip: int = 0, limit: int = 100) -> List
     return result.scalars().all()
 
 
-
 async def create_appeal(db: AsyncSession, appeal_in: AppealCreate, current_user_id: str) -> Appeal:
     new_obj = Appeal(
         type_id=appeal_in.type_id,
@@ -47,28 +46,23 @@ async def create_appeal(db: AsyncSession, appeal_in: AppealCreate, current_user_
     db.add(new_obj)
     await db.commit()
     await db.refresh(new_obj)
-
-    # Формируем сообщение для рассылки
     message = {
         "event_type": "create",
         "id": str(new_obj.id),
 
     }
-    print(message, "aaaaaaaaaa")
-    # Рассылаем всем подписанным WebSocket-клиентам
     await manager.broadcast(message)
 
     return new_obj
 
 
-async def update_appeal(db: AsyncSession, appeal_id: str, appeal_in: AppealUpdate, current_user_id: str) -> Appeal | None:
+async def update_appeal(db: AsyncSession, appeal_id: str, appeal_in: AppealUpdate,
+                        current_user_id: str) -> Appeal | None:
     stmt = select(Appeal).where(Appeal.id == appeal_id)
     result = await db.execute(stmt)
     obj = result.scalar_one_or_none()
     if not obj:
         return None
-
-    # Проверяем, какие поля пришли, и меняем
     if appeal_in.status_id is not None:
         obj.status_id = appeal_in.status_id
     if appeal_in.assigned_to_id is not None:
@@ -81,7 +75,6 @@ async def update_appeal(db: AsyncSession, appeal_id: str, appeal_in: AppealUpdat
     await db.commit()
     await db.refresh(obj)
 
-    # Снова формируем сообщение для рассылки
     message = {
         "event_type": "update",
         "appeal": {
@@ -115,17 +108,14 @@ async def soft_delete_appeal(db: AsyncSession, appeal_id: str, current_user_id: 
     if not obj:
         return None
 
-    # Вместо физического удаления ставим флаг is_deleted = True
     obj.is_deleted = True
     await db.commit()
     await db.refresh(obj)
 
-    # Сообщаем всем, что объект «удален»
     message = {
         "event_type": "delete",
         "appeal": {
             "id": str(obj.id),
-            # Можно передать минимум полей — достаточно id и флага is_deleted.
             "is_deleted": obj.is_deleted,
         },
     }

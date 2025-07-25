@@ -1,7 +1,7 @@
-# app/schemas/image.py
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
+
 
 class ImageRead(BaseModel):
     id: UUID
