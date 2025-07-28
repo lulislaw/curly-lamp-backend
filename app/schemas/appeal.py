@@ -11,9 +11,9 @@ class AppealBase(BaseModel):
     status_id: int
     location: Optional[str] = None
     description: Optional[str] = None
-    reporter_id: Optional[uuid.UUID] = None
+    reporter_id: Optional[int] = None
     source: str
-    assigned_to_id: Optional[uuid.UUID] = None
+    assigned_to_id: Optional[int] = None
     payload: Optional[dict] = None
 
 
@@ -23,7 +23,7 @@ class AppealCreate(AppealBase):
 
 class AppealUpdate(BaseModel):
     status_id: Optional[int] = None
-    assigned_to_id: Optional[uuid.UUID] = None
+    assigned_to_id: Optional[int] = None
     location: Optional[str] = None
     description: Optional[str] = None
     metadata: Optional[dict] = None
@@ -47,7 +47,7 @@ class AppealRead(AppealBase):
 class AppealHistoryBase(BaseModel):
     event_time: datetime.datetime
     event_type: str
-    changed_by_id: Optional[uuid.UUID] = None
+    changed_by_id: Optional[int] = None
     payload: Optional[dict] = None
 
 

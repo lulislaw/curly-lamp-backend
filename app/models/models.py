@@ -10,7 +10,9 @@ from sqlalchemy import (
     TIMESTAMP,
     ForeignKey,
     JSON,
-    text
+    text,
+    func,
+    Table,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -43,19 +45,6 @@ class AppealStatus(Base):
     name = Column(String, nullable=False)
     sort_order = Column(Integer, nullable=False)
 
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    username = Column(String(100), unique=True, nullable=False)
-    full_name = Column(String(200))
-    role = Column(String(50), nullable=False)
-    email = Column(String(255), unique=True)
-    phone = Column(String(50))
-    created_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
-    updated_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-
 class Appeal(Base):
     __tablename__ = "appeals"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -67,9 +56,9 @@ class Appeal(Base):
     status_id = Column(Integer, ForeignKey("appeal_statuses.id"), nullable=False)
     location = Column(String(255))
     description = Column(Text)
-    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     source = Column(String(50), nullable=False)
-    assigned_to_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    assigned_to_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     payload = Column("metadata", JSON, nullable=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     reporter = relationship("User", foreign_keys=[reporter_id])
@@ -156,3 +145,59 @@ class BuildingConfig(Base):
     name_build = Column(Text, nullable=False)
     config = Column(JSONB, nullable=False, default={})
     updated_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
+
+role_permissions = Table(
+    'role_permissions', Base.metadata,
+    Column('role_id', Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
+    Column('permission_id', Integer, ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True),
+)
+
+user_roles = Table(
+    'user_roles', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
+    Column('role_id', Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
+)
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id            = Column(Integer, primary_key=True, index=True)
+    username      = Column(String(50), unique=True, nullable=False, index=True)
+    full_name     = Column(String(100))
+    email         = Column(String(100), unique=True, nullable=False, index=True)
+    phone         = Column(String(20))
+    password_hash = Column(String(255), nullable=False)
+    tg_id         = Column(String(100), nullable=True)
+    created_at    = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at    = Column(TIMESTAMP(timezone=True), server_default=func.now(),
+                           onupdate=func.now(), nullable=False)
+
+    roles = relationship('Role', secondary=user_roles, back_populates='users')
+
+
+class Role(Base):
+    __tablename__ = 'roles'
+
+    id          = Column(Integer, primary_key=True, index=True)
+    name        = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    created_at  = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at  = Column(TIMESTAMP(timezone=True), server_default=func.now(),
+                         onupdate=func.now(), nullable=False)
+
+    permissions = relationship('Permission', secondary=role_permissions, back_populates='roles')
+    users       = relationship('User', secondary=user_roles, back_populates='roles')
+
+
+class Permission(Base):
+    __tablename__ = 'permissions'
+
+    id          = Column(Integer, primary_key=True, index=True)
+    code        = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    created_at  = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at  = Column(TIMESTAMP(timezone=True), server_default=func.now(),
+                         onupdate=func.now(), nullable=False)
+
+    roles = relationship('Role', secondary=role_permissions, back_populates='permissions')
