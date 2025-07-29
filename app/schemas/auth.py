@@ -36,6 +36,7 @@ class UserBase(BaseModel):
     username: str
     full_name: Optional[str]
     email: EmailStr
+    tg_id: Optional[str]
     phone: Optional[str]
 
 class UserCreate(UserBase):
