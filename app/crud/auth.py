@@ -11,7 +11,7 @@ from app.schemas.auth import (
     UserCreate, UserRead,
 )
 
-
+from fastapi import HTTPException, status
 # ——— Permissions ———
 
 async def get_permission(db: AsyncSession, permission_id: int) -> Optional[Permission]:
@@ -123,7 +123,15 @@ async def delete_role(
 # ——— Users ———
 
 async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
-    return await db.get(User, user_id)
+    result = await db.execute(
+        select(User)
+        .options(
+            selectinload(User.roles)
+                .selectinload(Role.permissions)
+        )
+        .filter(User.id == user_id)
+    )
+    return result.scalars().first()
 
 
 async def list_users(db: AsyncSession) -> List[User]:
@@ -164,23 +172,32 @@ async def update_user(
     db: AsyncSession,
     user_id: int,
     u: UserCreate
-) -> User:
-    user = await get_user(db, user_id)
+) -> None:
+    # грузим сразу с ролями
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.roles))
+        .filter(User.id==user_id)
+    )
+    user = result.scalars().first()
     if not user:
-        return None
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.username = u.username
     user.full_name = u.full_name
     user.email     = u.email
     user.phone     = u.phone
     if u.password:
         user.password_hash = get_password_hash(u.password)
-    if u.role_ids:
-        roles_ = (await db.execute(
+
+    if u.role_ids is not None:
+        roles_res = await db.execute(
             select(Role).filter(Role.id.in_(u.role_ids))
-        )).scalars().all()
-        user.roles = roles_
+        )
+        user.roles = roles_res.scalars().all()
+
     await db.commit()
     await db.refresh(user)
-    return user
 
 
 async def delete_user(

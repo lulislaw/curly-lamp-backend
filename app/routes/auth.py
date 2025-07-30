@@ -53,14 +53,25 @@ async def delete_permission_endpoint(
 
 @router.post(
     "/roles",
-    response_model=auth.RoleRead,
+    response_model=auth.RoleCreate,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_role_endpoint(
     r: auth.RoleCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    return await create_role(db, r)
+    try:
+        role = await create_role(db, r)
+        return role
+    except IntegrityError as exc:
+        await db.rollback()
+        msg = str(exc.orig).lower()
+        if "roles_name_key" in msg:
+            detail = "Роль с таким именем уже существует"
+        else:
+            detail = "Нарушено уникальное ограничение"
+        raise HTTPException(400, detail=detail)
+
 
 
 @router.get(
@@ -104,7 +115,7 @@ async def delete_role_endpoint(
 
 @router.post(
     "/users",
-    response_model=auth.UserRead,
+    response_model=auth.UserBase,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user_endpoint(
@@ -112,22 +123,21 @@ async def create_user_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        # 1) Создаём
         user = await create_user(db, u)
-        # 2) Подтягиваем полностью (с ролями и правами)
         return await get_user(db, user.id)
+
     except IntegrityError as exc:
-        # Откатываем транзакцию, чтобы сессия была целой
         await db.rollback()
-        # Разбиение по ключам уникальных полей
         msg = str(exc.orig).lower()
         if "users_username_key" in msg:
-            raise HTTPException(status_code=400, detail="Пользователь с таким username уже существует")
-        if "users_email_key" in msg:
-            raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
-        # можно добавить проверку для других уникальных полей (например, tg_id)
-        # иначе кидаем внутрь как неизменённую
-        raise
+            detail = "Пользователь с таким username уже существует"
+        elif "users_email_key" in msg:
+            detail = "Пользователь с таким email уже существует"
+        elif "users_tg_id_key" in msg or "tg_id" in msg:
+            detail = "Пользователь с таким Telegram ID уже существует"
+        else:
+            detail = "Нарушено уникальное ограничение"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
 @router.get(
@@ -161,10 +171,22 @@ async def update_user_endpoint(
     u: auth.UserCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    user = await update_user(db, user_id, u)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    try:
+        await update_user(db, user_id, u)
+        return await get_user(db, user_id)
+
+    except IntegrityError as exc:
+        await db.rollback()
+        msg = str(exc.orig).lower()
+        if "users_username_key" in msg:
+            detail = "Пользователь с таким username уже существует"
+        elif "users_email_key" in msg:
+            detail = "Пользователь с таким email уже существует"
+        elif "users_tg_id_key" in msg or "tg_id" in msg:
+            detail = "Пользователь с таким Telegram ID уже существует"
+        else:
+            detail = "Нарушено уникальное ограничение"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
 @router.delete(

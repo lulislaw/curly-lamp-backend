@@ -23,6 +23,8 @@ class RoleBase(BaseModel):
 
 class RoleCreate(RoleBase):
     permission_ids: List[int] = []
+    class Config:
+        from_attributes = True
 
 class RoleRead(RoleBase):
     id: int
@@ -41,7 +43,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role_ids: List[int] = []
+    role_ids: Optional[List[int]] = []
 
 class UserRead(UserBase):
     id: int
